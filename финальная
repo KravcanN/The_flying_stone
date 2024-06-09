@@ -1,0 +1,162 @@
+import pygame
+from random import randint
+pygame.init()
+
+WIDGHT, HEIGHT = 800, 600
+FPS = 60
+
+window = pygame.display.set_mode((WIDGHT, HEIGHT))
+clock = pygame.time.Clock()
+
+fontl1 = pygame.font.Font(None, 35)
+fontl2 = pygame.font.Font(None, 80)
+
+imgBG = pygame.image.load('fon.png')
+imgBird = pygame.image.load('roc.png')
+imgPT = pygame.image.load('tryba_2.png')
+imgPB = pygame.image.load('tryba.png')
+
+py ,sy, ay = HEIGHT // 2, 0, 0
+player = pygame.Rect(WIDGHT // 3, py, 54, 40)
+
+state = 'start'
+timer = 60
+
+pipes = []
+bges = []
+pipesScores = []
+
+pipeSpeed = 3
+pipeGataSize = 200
+pipeGataPos = HEIGHT // 2
+
+lives = 3
+scores = 0
+
+bges.append(pygame.Rect(0, 0, 322, 600))
+
+
+play = True
+while play:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            play = False
+
+    press = pygame.mouse.get_pressed()
+    keys = pygame.key.get_pressed()
+    click = press[0] or keys[pygame.K_SPACE]
+
+    if timer > 0:
+        timer -= 1
+
+    for i in range(len(bges) -1, -1, -1):
+        bg = bges[i]
+        bg.x -= pipeSpeed // 2
+
+        if bg.right < 0:
+            bges.remove(bg)
+
+        if bges[len(bges)-1].right <= WIDGHT:
+            bges.append(pygame.Rect(bges[len(bges)-1].right, 0, 322, 600))
+
+        pipeSpeed = 3 + scores // 100
+
+    for i in range(len(pipes) -1, -1, -1):
+        pipe = pipes[i]
+        pipe.x -= pipeSpeed
+
+        if pipe.right < 0:
+            pipes.remove(pipe)
+            if pipe in pipesScores:
+                pipesScores.remove(pipe)
+
+
+    if state == 'start':
+        if click and timer == 0 and len(pipes) == 0:
+            state = 'play'
+
+        py += (HEIGHT // 2 - py) * 0.1
+        player.y = py
+
+    elif state == 'play':
+        if click:
+            ay = -2
+        else:
+            ay = 0
+
+        py += sy
+        sy = (sy + ay + 1) * 0.98
+        player.y = py
+
+        if len(pipes) == 0 or pipes[len(pipes)-1].x < WIDGHT - 300:
+            pipes.append(pygame.Rect(WIDGHT, 0, 10, pipeGataPos - pipeGataSize // 2))
+            pipes.append(pygame.Rect(WIDGHT, pipeGataPos + pipeGataSize // 2, 10, HEIGHT - pipeGataPos - pipeGataSize // 2))
+
+            pipeGataPos += randint(-100, 100)
+            if pipeGataPos < pipeGataSize:
+                pipeGataPos = pipeGataSize
+            elif pipeGataPos > HEIGHT - pipeGataSize:
+                pipeGataPos = HEIGHT - pipeGataSize
+
+
+        if player.top < 0 or player.bottom > HEIGHT:
+            state = 'fall'
+
+        for pipe in pipes:
+            if player.colliderect(pipe):
+                state = 'fall'
+            if pipe.right < player.left and pipe not in pipesScores:
+                pipesScores.append(pipe)
+                scores += 5
+
+    elif state == 'fall':
+        sy, ay = 0, 0 
+        pipeGataPos = HEIGHT // 2
+
+        lives -= 1
+        if lives > 0:
+            state ='start'
+            timer = 60
+        else:
+            state ='game over'
+            timer = 120
+    else:
+        py += sy
+        sy = (sy + ay + 1) * 0.98
+        player.y = py
+
+        if timer == 0:
+            play = False
+
+
+
+
+    window.fill(pygame.Color('black'))
+    for bg in bges:
+        window.blit(imgBG, bg)
+
+    for pipe in pipes:
+        if pipe.y == 0:
+            rect = imgPT.get_rect(bottomleft = pipe.bottomleft)
+            rect.x -= 90
+            window.blit(imgPT, rect)
+        else:
+            rect = imgPB.get_rect(topleft = pipe.topleft)
+            rect.x -= 90
+            window.blit(imgPB, rect)
+
+
+    image = imgBird.subsurface(0, 0, 54, 40)
+    image = pygame.transform.rotate(image, -sy * 2)
+    window.blit(image, player)
+
+    text = fontl1.render('очки: ' + str(scores), 1, pygame.Color('white'))
+    window.blit(text, (10, 10))
+
+    text = fontl1.render('жизни: ' + str(lives), 1, pygame.Color('white'))
+    window.blit(text, (10, HEIGHT - 30))
+
+    pygame.display.update()
+    clock.tick(FPS)
+
+pygame.quit()
